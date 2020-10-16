@@ -5,27 +5,38 @@ import multiprocessing
 
 path = input("Enter the path to the photo: ")
 image = cv2.imread(path)
-dist = [0,0,0,0,0,0,0,0,0]
 
-def convert(pix):
-    c = []
-    for color in pix:
-        c.append(int(str(color)[0])) 
-    return c
+def split(bArr,parts):
+    avg = len(bArr) / float(parts)
+    out = []
+    last = 0.0
+
+    while last < len(bArr):
+        out.append(bArr[int(last):int(last + avg)])
+        last += avg
+
+    return out
+
+
+def convert(imgarr):
+    dist = [0,0,0,0,0,0,0,0,0]
+    for col in imgarr:
+        for pix in col: 
+            for color in pix:
+                dist[int(str(color)[0])-1] += 1
+    return dist 
 
 if __name__ == '__main__':
-    p = multiprocessing.Pool() 
-    for col in image:
-        for i in range(0, len(col), 4): 
-            arrs = []
-            for j in range(4): 
-                if (i+j < len(col)): arrs.append(col[i+j]) 
-            out = p.map(convert, arrs)
-            for o in out:
-                for i in o:
-                    dist[i-1] += 1
-            out.clear()
+    cores = multiprocessing.cpu_count() 
+    batches = split(image, cores) 
+    with multiprocessing.Pool(processes=cores) as pool:
+        comDist = pool.map(convert, batches)
+        finDist = [0,0,0,0,0,0,0,0,0]
+        for i in range(len(comDist)): 
+            for j in range(len(comDist[i])):
+                finDist[j] += comDist[i][j]
 
-tot = sum(dist) 
-for i in range(len(dist)):
-    print(dist[i]/tot*100)
+
+tot = sum(finDist) 
+for i in range(len(finDist)):
+    print(finDist[i]/tot*100)
